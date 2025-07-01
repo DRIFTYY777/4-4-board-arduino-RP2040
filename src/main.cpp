@@ -2,7 +2,6 @@
 #include "mbed.h"
 #include "USBKeyboard.h"
 
-USBKeyboard key;
 
 // Rotary Encoder
 #define RT_BTN 17
@@ -19,6 +18,8 @@ USBKeyboard key;
 #define COL2 1
 #define COL3 2
 #define COL4 3
+
+USBKeyboard key;
 
 constexpr int rowPins[4] = {ROW1, ROW2, ROW3, ROW4};
 constexpr int colPins[4] = {COL1, COL2, COL3, COL4};
