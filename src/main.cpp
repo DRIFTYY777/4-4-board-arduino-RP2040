@@ -8,26 +8,29 @@
 #define ENC_B 14
 
 // Keypad Matrix
-#define ROW1 28
-#define ROW2 27
-#define ROW3 26
-#define ROW4 22
+#define ROW1 0
+#define ROW2 1
+#define ROW3 2
+#define ROW4 3
 
-#define COL1 0
-#define COL2 1
-#define COL3 2
-#define COL4 3
+#define COL1 28
+#define COL2 27
+#define COL3 26
+#define COL4 22
 
 
-constexpr int rowPins[4] = {ROW1, ROW2, ROW3, ROW4};
-constexpr int colPins[4] = {COL1, COL2, COL3, COL4};
+constexpr int rowPins[4] = {ROW4, ROW3, ROW2, ROW1};
+constexpr int colPins[4] = {COL4, COL3, COL2, COL1};
 
+// Keypad matrix layout
 char keymap[4][4] = {
-    {'1', '2', '3', 'A'},
-    {'4', '5', '6', 'B'},
-    {'7', '8', '9', 'C'},
-    {'*', '0', '#', 'D'}
+    { '1', '2', '3', 'A' },
+    { '4', '5', '6', 'B' },
+    { '7', '8', '9', 'C' },
+    { '*', '0', '#', 'D' }
 };
+
+
 
 // Previous state of the rotary encoder
 int prevA = -1;
@@ -101,7 +104,7 @@ void scrollMouse() {
         key_mouse.scroll(static_cast<int8_t>(a));
     } else if (b) {
         Serial.print("Mouse Scrolling: ");
-        Serial.println(b);
+        Serial.println(-b);
         key_mouse.scroll(static_cast<int8_t>(-b));
     }
 }
@@ -112,12 +115,10 @@ void volumeControl() {
     if (a) {
         Serial.print("Volume Up: ");
         Serial.println(a);
-
-
         key_mouse.media_control(KEY_VOLUME_UP);
     } else if (b) {
         Serial.print("Volume Down: ");
-        Serial.println(b);
+        Serial.println(-b);
         key_mouse.media_control(KEY_VOLUME_DOWN);
     }
 }
@@ -136,6 +137,7 @@ void checkKeypad() {
         digitalWrite(rowPins[r], HIGH);
     }
 }
+
 
 void blinkLED(const bool state) {
     digitalWrite(LED_BUILTIN, state ? HIGH : LOW);
