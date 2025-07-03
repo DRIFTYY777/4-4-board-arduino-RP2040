@@ -1,7 +1,8 @@
 #include <Arduino.h>
 #include "mbed.h"
 #include "USBMouseKeyboard.h"
-#include <NeoPixelConnect.h>
+
+#include "keypadAnimation.h"
 
 using namespace mbed;
 using namespace rtos;
@@ -36,6 +37,14 @@ char keymap[4][4] = {
     {'7', '8', '9', 'C'},
     {'*', '0', '#', 'D'}};
 
+
+// Message queue for keypad events
+struct KeypadEvent {
+    uint8_t keyIndex;
+    char keyValue;
+};
+
+
 // Previous state of the rotary encoder
 int prevA = -1;
 int prevB = -1;
@@ -56,12 +65,20 @@ enum ROTARY_BTN_STATE
     LONG_PRESSED = 2,
 };
 
+// Global queue for communication between threads
+Queue<KeypadEvent, 16> keypadQueue;
+Mutex rgbMutex;
+
 /// USB Mouse and Keyboard instance
 USBMouseKeyboard key_mouse;
 // NeoPixel instance
-NeoPixelConnect RGB(RGB_PIN, LED_COUNT, pio0, 0);
-// Thread for RGB animation
+
+NeoPixelConnect RGB(RGB_PIN, LED_COUNT, pio0, 0);// Thread for RGB animation
+keypadAnimation* animations;
+
+
 Thread thread;
+Thread keypadThread;
 
 // return the button is pressed, long pressed or released
 ROTARY_BTN_STATE checkRotaryButton()
@@ -152,25 +169,27 @@ void volumeControl()
     }
 }
 
-// Check the keypad matrix for pressed keys
-void checkKeypad()
-{
-    for (int r = 0; r < 4; r++)
-    {
+// checkKeypad function
+void checkKeypad() {
+    for (int r = 0; r < 4; r++) {
         digitalWrite(rowPins[r], LOW);
-        for (int c = 0; c < 4; c++)
-        {
-            if (digitalRead(colPins[c]) == LOW)
-            {
-                Serial.print("Keypad Pressed: ");
-                Serial.println(keymap[r][c]);
-                key_mouse.printf("%c", keymap[r][c]);
-                delay(200); // a simple debounce
+        for (int c = 0; c < 4; c++) {
+            if (digitalRead(colPins[c]) == LOW) {
+
+                KeypadEvent* event = new KeypadEvent();
+
+                event->keyIndex = r * 4 + c;
+                event->keyValue = keymap[r][c];
+
+                // Send event to queue
+                keypadQueue.try_put(event);
+                delay(200); // debounce
             }
         }
         digitalWrite(rowPins[r], HIGH);
     }
 }
+
 
 // Blink the built-in LED to indicate the current state
 void blinkLED(const bool state)
@@ -178,67 +197,62 @@ void blinkLED(const bool state)
     digitalWrite(LED_BUILTIN, state ? HIGH : LOW);
 }
 
-// cyan Pulse
-void cyanPulse()
-{
-    static uint8_t brightness = 0;
-    static int fadeDirection = 1;
+// Keypad processing thread
+[[noreturn]] void keypad_thread() {
 
-    // Adjust brightness
-    if (brightness == 0)
-    {
-        fadeDirection = 1; // Start fading in
+    KeypadEvent* event;
+
+    while (true) {
+        if (keypadQueue.try_get(&event)) {
+            // Process keypress
+
+            key_mouse.printf("%c", event->keyValue);
+
+            animations->rippleFromKey(event->keyIndex);
+
+            delete event; // Free the allocated memory
+        }
+        ThisThread::sleep_for(10);
     }
-    else if (brightness >= BRIGHTNESS)
-    {
-        fadeDirection = -1; // Start fading out
-    }
-    brightness += fadeDirection * 5; // Adjust speed of the pulse
-
-    // Set color to cyan
-    RGB.neoPixelFill(0, brightness, brightness);
-    RGB.neoPixelShow();
-
-    delay(50); // Adjust delay for speed of pulse
 }
-
-
 
 // create a thread for the NeoPixel animation
-void RGB_THREAD()
-{
-    while (true)
-    {
-        cyanPulse();
+[[noreturn]] void RGB_THREAD() {
+    while (true) {
+        animations->breathingEffect();
+        ThisThread::sleep_for(50);
     }
 }
+
+
 
 void setup()
 {
     Serial.begin(115200);
-    RGB.neoPixelInit(RGB_PIN, LED_COUNT);
-    RGB.setBrightness(BRIGHTNESS); // Set brightness to maximum
-    RGB.neoPixelClear();           // Clear the NeoPixel strip
 
+    RGB.neoPixelInit(RGB_PIN, LED_COUNT);
+    animations = new keypadAnimation(&RGB, BRIGHTNESS);
+
+    // Initialize pins
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(ENC_A, INPUT);
     pinMode(ENC_B, INPUT);
     pinMode(RT_BTN, INPUT_PULLUP);
 
-    for (const int rowPin : rowPins)
-    {
+    for (const int rowPin : rowPins) {
         pinMode(rowPin, OUTPUT);
         digitalWrite(rowPin, HIGH);
     }
-    for (const int colPin : colPins)
-    {
+    for (const int colPin : colPins) {
         pinMode(colPin, INPUT_PULLUP);
     }
 
     prevA = digitalRead(ENC_A);
     prevB = digitalRead(ENC_B);
 
-    thread.start(RGB_THREAD); // Start the NeoPixel animation thread
+    // Start threads
+    thread.start(RGB_THREAD);
+    keypadThread.start(keypad_thread);
 }
 
 void loop()
