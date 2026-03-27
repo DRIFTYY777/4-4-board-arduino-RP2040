@@ -4,10 +4,26 @@
 #include <NeoPixelConnect.h>
 #include <mbed.h>
 
-class keypadAnimation {
+// all types of animation
+enum ANIMATION_TYPE
+{
+    RAINBOW,
+    BREATHING,
+    RIPPLE
+};
+enum ANIMATION_EVENT
+{
+    ANIMATION_START,
+    ANIMATION_END
+};
+
+class keypadAnimation
+{
 private:
+    ANIMATION_TYPE currentAnimationType;
+
     // Pointer to the NeoPixelConnect object
-    NeoPixelConnect* strip;
+    NeoPixelConnect *strip;
     // Animation parameters
     uint8_t brightness;
     // Animation state
@@ -25,14 +41,16 @@ private:
     void fadeOut() const;
 
 public:
-
-    keypadAnimation(NeoPixelConnect* ledStrip, uint8_t bright = 5) :
-        strip(ledStrip), brightness(bright) {
+    keypadAnimation(NeoPixelConnect *ledStrip, uint8_t bright = 5) : strip(ledStrip), brightness(bright)
+    {
         strip->setBrightness(brightness);
     }
 
+    void setAnimationType(ANIMATION_TYPE type);
+    void passAnimationEvent(ANIMATION_EVENT event);
+   
+
     void rippleFromKey(uint8_t keyIndex);
+
     void breathingEffect();
-
-
 };

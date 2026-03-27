@@ -37,13 +37,12 @@ char keymap[4][4] = {
     {'7', '8', '9', 'C'},
     {'*', '0', '#', 'D'}};
 
-
 // Message queue for keypad events
-struct KeypadEvent {
+struct KeypadEvent
+{
     uint8_t keyIndex;
     char keyValue;
 };
-
 
 // Previous state of the rotary encoder
 int prevA = -1;
@@ -73,9 +72,8 @@ Mutex rgbMutex;
 USBMouseKeyboard key_mouse;
 // NeoPixel instance
 
-NeoPixelConnect RGB(RGB_PIN, LED_COUNT, pio0, 0);// Thread for RGB animation
-keypadAnimation* animations;
-
+NeoPixelConnect RGB(RGB_PIN, LED_COUNT, pio0, 0); // Thread for RGB animation
+keypadAnimation *animations;
 
 Thread thread;
 Thread keypadThread;
@@ -83,7 +81,6 @@ Thread keypadThread;
 // return the button is pressed, long pressed or released
 ROTARY_BTN_STATE checkRotaryButton()
 {
-
     static unsigned long lastPressTime = 0;
     static bool longPressHandled = false;
     const bool currentState = digitalRead(RT_BTN);
@@ -170,13 +167,17 @@ void volumeControl()
 }
 
 // checkKeypad function
-void checkKeypad() {
-    for (int r = 0; r < 4; r++) {
+void checkKeypad()
+{
+    for (int r = 0; r < 4; r++)
+    {
         digitalWrite(rowPins[r], LOW);
-        for (int c = 0; c < 4; c++) {
-            if (digitalRead(colPins[c]) == LOW) {
+        for (int c = 0; c < 4; c++)
+        {
+            if (digitalRead(colPins[c]) == LOW)
+            {
 
-                KeypadEvent* event = new KeypadEvent();
+                KeypadEvent *event = new KeypadEvent();
 
                 event->keyIndex = r * 4 + c;
                 event->keyValue = keymap[r][c];
@@ -190,7 +191,6 @@ void checkKeypad() {
     }
 }
 
-
 // Blink the built-in LED to indicate the current state
 void blinkLED(const bool state)
 {
@@ -198,18 +198,16 @@ void blinkLED(const bool state)
 }
 
 // Keypad processing thread
-[[noreturn]] void keypad_thread() {
-
-    KeypadEvent* event;
-
-    while (true) {
-        if (keypadQueue.try_get(&event)) {
+[[noreturn]] void keypad_thread()
+{
+    KeypadEvent *event;
+    while (true)
+    {
+        if (keypadQueue.try_get(&event))
+        {
             // Process keypress
-
             key_mouse.printf("%c", event->keyValue);
-
             animations->rippleFromKey(event->keyIndex);
-
             delete event; // Free the allocated memory
         }
         ThisThread::sleep_for(10);
@@ -217,14 +215,15 @@ void blinkLED(const bool state)
 }
 
 // create a thread for the NeoPixel animation
-[[noreturn]] void RGB_THREAD() {
-    while (true) {
-        animations->breathingEffect();
+[[noreturn]] void RGB_THREAD()
+{
+    while (true)
+    {
+        // animations->breathingEffect();
+        animations->setAnimationType(RIPPLE);
         ThisThread::sleep_for(50);
     }
 }
-
-
 
 void setup()
 {
@@ -239,11 +238,13 @@ void setup()
     pinMode(ENC_B, INPUT);
     pinMode(RT_BTN, INPUT_PULLUP);
 
-    for (const int rowPin : rowPins) {
+    for (const int rowPin : rowPins)
+    {
         pinMode(rowPin, OUTPUT);
         digitalWrite(rowPin, HIGH);
     }
-    for (const int colPin : colPins) {
+    for (const int colPin : colPins)
+    {
         pinMode(colPin, INPUT_PULLUP);
     }
 
